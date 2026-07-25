@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brohd11/go-ssh/internal/sshcfg"
+	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
 	"github.com/brohd11/bubblestack/core"
 	tea "github.com/charmbracelet/bubbletea"

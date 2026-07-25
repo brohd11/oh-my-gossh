@@ -1,4 +1,4 @@
-module github.com/brohd11/go-ssh
+module github.com/brohd11/oh-my-gossh
 
 go 1.26.4
 

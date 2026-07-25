@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/brohd11/go-ssh/internal/sshcfg"
+	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
 	"github.com/brohd11/bubblestack/components"
 	"github.com/brohd11/bubblestack/core"

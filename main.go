@@ -1,4 +1,4 @@
-// Command go-ssh is a terminal picker for the hosts in your ssh config: open a shell,
+// Command gossh is a terminal picker for the hosts in your ssh config: open a shell,
 // power a host off, or copy the paths you launched it with.
 //
 // It replaces a set of curses Python scripts driven from a Linux Mint nemo action, which
@@ -14,13 +14,23 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/brohd11/go-ssh/internal/app"
+	"github.com/brohd11/oh-my-gossh/internal/app"
 )
+
+// version is the binary version, injected at build time via ldflags
+// (-X main.version=...); defaults to "dev" for a plain `go build`.
+var version = "dev"
 
 func main() {
 	configPath := flag.String("config", "", "ssh config file to read (default ~/.ssh/config)")
+	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Usage = usage
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("gossh", version)
+		return
+	}
 
 	paths, skipped := resolvePaths(flag.Args())
 	for _, s := range skipped {
@@ -28,7 +38,7 @@ func main() {
 	}
 
 	if err := app.Run(paths, *configPath); err != nil {
-		fmt.Fprintln(os.Stderr, "go-ssh:", err)
+		fmt.Fprintln(os.Stderr, "gossh:", err)
 		os.Exit(1)
 	}
 }
@@ -36,17 +46,17 @@ func main() {
 // usage writes the help text. io.WriteString rather than fmt.Fprint because the nemo
 // placeholder %F reads as a format directive to vet.
 func usage() {
-	io.WriteString(flag.CommandLine.Output(), `go-ssh — pick a host from your ssh config and act on it
+	io.WriteString(flag.CommandLine.Output(), `gossh — pick a host from your ssh config and act on it
 
 Usage:
-  go-ssh [flags] [paths...]
+  gossh [flags] [paths...]
 
 Positional arguments are the files and directories to offer for transfer, as passed by a
 file-manager action (nemo's %F). With none, only the operations that need no selection are
 shown.
 
-  go-ssh                       # open, power off
-  go-ssh ~/notes.txt ~/photos  # the above, plus transferring those two
+  gossh                       # open, power off
+  gossh ~/notes.txt ~/photos  # the above, plus transferring those two
 
 Flags:
 `)

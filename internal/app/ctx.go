@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/brohd11/go-ssh/internal/sshcfg"
+	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
 	"github.com/brohd11/bubblestack/core"
 )
