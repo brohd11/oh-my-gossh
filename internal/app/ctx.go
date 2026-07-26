@@ -85,16 +85,6 @@ func (c *Ctx) SSHArgs(args ...string) []string {
 	return append([]string{"-F", c.override}, args...)
 }
 
-// SSHCommandLine renders an ssh invocation as a shell string, for the detached-terminal
-// launcher (which runs through `bash -c`). Every element is quoted.
-func (c *Ctx) SSHCommandLine(args ...string) string {
-	out := "ssh"
-	for _, a := range c.SSHArgs(args...) {
-		out += " " + shellQuote(a)
-	}
-	return out
-}
-
 // Host looks up a parsed host by alias, reporting whether it is still present — a config
 // reload between opening a menu and acting on it can drop one.
 func (c *Ctx) Host(alias string) (sshcfg.Host, bool) {

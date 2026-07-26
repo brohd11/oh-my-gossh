@@ -1,11 +1,14 @@
 package app
 
 import (
+	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
 	"github.com/brohd11/bubblestack/core"
+	"github.com/brohd11/bubblestack/sysopen"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -29,7 +32,35 @@ func openInline(sh *core.Shared, h sshcfg.Host) core.Action {
 // had (ssh_open.py:51). The TUI stays up, so this is how a user keeps several sessions
 // while still driving the menu.
 func openWindow(sh *core.Shared, h sshcfg.Host) core.Action {
-	return runInWindow(Of(sh).SSHCommandLine(h.Target()), "session to "+h.Alias)
+	argv := append([]string{"ssh"}, Of(sh).SSHArgs(h.Target())...)
+	return sysopen.Terminal(workDir(), windowArgv(argv)...)
+}
+
+// workDir is the directory the new window opens at. sysopen.Terminal stats it, and gossh
+// has no directory of its own — the cwd is the closest thing to one, and it is the folder
+// being browsed when a file-manager action launched us.
+func workDir() string {
+	if wd, err := os.Getwd(); err == nil {
+		return wd
+	}
+	home, _ := os.UserHomeDir()
+	return home // an empty string fails sysopen's stat, which reports it on the status line
+}
+
+// windowArgv wraps argv so the window survives its command: a detached terminal that
+// exits with ssh shows the result for a few milliseconds and then vanishes. Ported from
+// ssh_shutdown_nas.py:67, which paused for the same reason.
+//
+// The line has to stay on one line. darwin runs it through `osascript ... do script`, and
+// an AppleScript string literal cannot hold a raw newline — the multi-line form the local
+// launcher used would be a syntax error there. Windows is exempt: sysopen opens it with
+// `cmd /k`, which already keeps the window up, and there is no bash to wrap with.
+func windowArgv(argv []string) []string {
+	if runtime.GOOS == "windows" {
+		return argv
+	}
+	line := shellJoin(argv) + `; echo; echo "---------------"; echo "Command finished, Enter to close window."; read _`
+	return []string{"bash", "-c", line}
 }
 
 // powerOffInline runs the shutdown over an ssh tty (-t), inline rather than through a
@@ -56,22 +87,3 @@ func powerOffInline(sh *core.Shared, h sshcfg.Host) core.Action {
 // ssh config has nowhere to record that, so per-host overrides wait for the supplemental
 // config. `sudo poweroff` resolves through PATH and covers both.
 const poweroffCommand = "sudo poweroff"
-
-// runInWindow opens a detached terminal running cmdline, reporting on the status line
-// when no emulator is available rather than failing silently.
-func runInWindow(cmdline, what string) core.Action {
-	cmd := terminalRunCmd(cmdline)
-	if cmd == nil {
-		return core.SetStatusAndLog("no terminal emulator found — use the inline option instead")
-	}
-	return core.Seq(
-		core.SetStatus("opening "+what+" in a new window"),
-		core.Async(func() tea.Msg {
-			if err := cmd.Start(); err != nil {
-				return core.SetStatusAndLog("could not open terminal: " + err.Error()).Msg
-			}
-			go cmd.Wait() //nolint:errcheck // reap the child; a window left open just parks this goroutine
-			return nil
-		}),
-	)
-}

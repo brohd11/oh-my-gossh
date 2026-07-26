@@ -112,17 +112,35 @@ func shellEcho(t *testing.T, quoted string) string {
 	return strings.TrimSuffix(got, " [0]")
 }
 
-// The window wrapper must keep the terminal alive after the command exits; without the
-// trailing read the window closes before anything can be read.
-func TestWrapCommandPausesAfterTheCommand(t *testing.T) {
-	got := wrapCommand("ssh 'nas'")
+// shellJoin's contract is that the shell splits the words back where they started, so
+// this asks a real one. The --config path with a space in it is the case that matters:
+// the detached window loses its -F argument if that splits in two.
+func TestShellJoinRoundTripsThroughRealShell(t *testing.T) {
+	argv := []string{"ssh", "-F", "/tmp/my configs/ssh.conf", "nas"}
 
-	if !strings.HasPrefix(got, "ssh 'nas'") {
-		t.Errorf("got %q, want the command first", got)
+	got := shellWords(t, shellJoin(argv))
+	if strings.Join(got, "|") != strings.Join(argv, "|") {
+		t.Errorf("shellJoin(%q) round-tripped to %q", argv, got)
 	}
-	if !strings.Contains(got, "read _") {
-		t.Errorf("got %q, want a trailing read so the window stays open", got)
+	// Empty argv must not produce a stray argument.
+	if got := shellWords(t, shellJoin(nil)); len(got) != 0 {
+		t.Errorf("shellJoin(nil) round-tripped to %q, want nothing", got)
 	}
+}
+
+// shellWords asks /bin/sh to split a command line and reports the arguments it found.
+// Unlike shellEcho this keeps them apart, which is the point when checking a whole argv.
+func shellWords(t *testing.T, line string) []string {
+	t.Helper()
+
+	out, err := exec.Command("/bin/sh", "-c", "for a in "+line+"; do printf '%s\\n' \"$a\"; done").Output()
+	if err != nil {
+		t.Fatalf("sh with %s: %v", line, err)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return strings.Split(strings.TrimSuffix(string(out), "\n"), "\n")
 }
 
 func TestQuoteJoinShowsBaseNames(t *testing.T) {

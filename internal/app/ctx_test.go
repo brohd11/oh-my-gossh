@@ -3,7 +3,6 @@ package app
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -33,9 +32,6 @@ func TestSSHArgsDefaultAddsNothing(t *testing.T) {
 	if len(got) != 1 || got[0] != "nas" {
 		t.Errorf("SSHArgs = %q, want just the alias", got)
 	}
-	if line := c.SSHCommandLine("nas"); line != `ssh 'nas'` {
-		t.Errorf("SSHCommandLine = %q", line)
-	}
 }
 
 // With --config, -F is what makes the alias resolvable. Without it ssh reads
@@ -52,24 +48,6 @@ func TestSSHArgsOverridePassesConfigThrough(t *testing.T) {
 	// SSHArgs() with no arguments is how the transfer builds its scp prefix.
 	if base := c.SSHArgs(); len(base) != 2 || base[0] != "-F" {
 		t.Errorf("SSHArgs() = %q, want the -F prefix alone", base)
-	}
-}
-
-// The detached-window launcher passes its command through `bash -c`, so every element
-// has to survive a shell.
-func TestSSHCommandLineIsShellSafe(t *testing.T) {
-	c := &Ctx{override: "/tmp/my configs/ssh.conf"}
-
-	got := c.SSHCommandLine("nas")
-	if !strings.HasPrefix(got, "ssh ") {
-		t.Fatalf("SSHCommandLine = %q", got)
-	}
-	// A space in the path must not split into two arguments.
-	if strings.Contains(got, "/tmp/my configs") && !strings.Contains(got, `'/tmp/my configs/ssh.conf'`) {
-		t.Errorf("SSHCommandLine = %q, want the path quoted", got)
-	}
-	if out := shellEcho(t, strings.TrimPrefix(got, "ssh ")); !strings.Contains(out, "/tmp/my configs/ssh.conf") {
-		t.Errorf("shell parsed the arguments as %q", out)
 	}
 }
 
@@ -111,43 +89,5 @@ func TestLoadReadsHostsAndRecordsOverride(t *testing.T) {
 	}
 	if _, ok := c.Host("absent"); ok {
 		t.Error("Host(absent) found")
-	}
-}
-
-// The window launcher has to produce a runnable command on this platform, or the "open
-// in a new window" option is dead on arrival.
-func TestTerminalRunCmdBuildsSomethingRunnable(t *testing.T) {
-	cmd := terminalRunCmd("ssh 'nas'")
-
-	if cmd == nil {
-		if runtime.GOOS == "linux" {
-			t.Skip("no terminal emulator on PATH")
-		}
-		t.Fatal("terminalRunCmd returned nil")
-	}
-	if cmd.Path == "" {
-		t.Error("command has no path")
-	}
-
-	if runtime.GOOS == "darwin" {
-		// macOS Terminal has no run-this-command flag, so the command is staged in an
-		// executable temp script.
-		script := cmd.Args[len(cmd.Args)-1]
-		defer os.Remove(script)
-
-		body, err := os.ReadFile(script)
-		if err != nil {
-			t.Fatalf("temp script: %v", err)
-		}
-		if !strings.Contains(string(body), "ssh 'nas'") {
-			t.Errorf("script does not run the command:\n%s", body)
-		}
-		info, err := os.Stat(script)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if info.Mode().Perm()&0o100 == 0 {
-			t.Errorf("script mode %v is not executable", info.Mode().Perm())
-		}
 	}
 }
