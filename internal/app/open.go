@@ -59,7 +59,7 @@ func windowArgv(argv []string) []string {
 	if runtime.GOOS == "windows" {
 		return argv
 	}
-	line := shellJoin(argv) + `; echo; echo "---------------"; echo "Command finished, Enter to close window."; read _`
+	line := sysopen.ShellJoin(argv) + `; echo; echo "---------------"; echo "Command finished, Enter to close window."; read _`
 	return []string{"bash", "-c", line}
 }
 

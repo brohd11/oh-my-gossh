@@ -4,26 +4,13 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/brohd11/bubblestack/sysopen"
 )
 
-func TestShellQuote(t *testing.T) {
-	for _, tc := range []struct {
-		in, want string
-	}{
-		{"plain", `'plain'`},
-		{"with space", `'with space'`},
-		{"", `''`},
-		{"semi;rm -rf /", `'semi;rm -rf /'`}, // the metacharacter is inert inside quotes
-		{"it's", `'it'\''s'`},                // close, escape, reopen
-		{"$HOME", `'$HOME'`},                 // no expansion
-		{"`whoami`", "'`whoami`'"},           // no substitution
-		{`back\slash`, `'back\slash'`},       // backslash is literal in single quotes
-	} {
-		if got := shellQuote(tc.in); got != tc.want {
-			t.Errorf("shellQuote(%q) = %s, want %s", tc.in, got, tc.want)
-		}
-	}
-}
+// The pure single-quoting (sysopen.ShellQuote/ShellJoin) is exercised by bubblestack's own
+// tests; the tests here cover go-ssh's shell-boundary contract — the remote-path tilde
+// handling and the real-shell round trips the transfer commands depend on.
 
 // The remote path is the case the Python got wrong. A tilde inside single quotes is a
 // literal, so quoting the whole path would make the remote mkdir create a directory
@@ -64,15 +51,15 @@ func TestShellQuoteRoundTripsThroughRealShell(t *testing.T) {
 		"new\tline",
 		`dir'; rm -rf /tmp/nope; echo '`, // the injection the quoting exists to stop
 	} {
-		out := shellEcho(t, shellQuote(in))
+		out := shellEcho(t, sysopen.ShellQuote(in))
 		if out != in {
-			t.Errorf("shellQuote(%q) round-tripped to %q", in, out)
+			t.Errorf("ShellQuote(%q) round-tripped to %q", in, out)
 		}
 	}
 }
 
 // quoteRemotePath's contract is the same round trip, except a leading tilde is meant to
-// expand — that is the whole reason it isn't plain shellQuote.
+// expand — that is the whole reason it isn't plain sysopen.ShellQuote.
 func TestQuoteRemotePathRoundTripsAndExpandsTilde(t *testing.T) {
 	home := shellEcho(t, "~")
 	if home == "" || home == "~" {
@@ -112,19 +99,19 @@ func shellEcho(t *testing.T, quoted string) string {
 	return strings.TrimSuffix(got, " [0]")
 }
 
-// shellJoin's contract is that the shell splits the words back where they started, so
+// ShellJoin's contract is that the shell splits the words back where they started, so
 // this asks a real one. The --config path with a space in it is the case that matters:
 // the detached window loses its -F argument if that splits in two.
 func TestShellJoinRoundTripsThroughRealShell(t *testing.T) {
 	argv := []string{"ssh", "-F", "/tmp/my configs/ssh.conf", "nas"}
 
-	got := shellWords(t, shellJoin(argv))
+	got := shellWords(t, sysopen.ShellJoin(argv))
 	if strings.Join(got, "|") != strings.Join(argv, "|") {
-		t.Errorf("shellJoin(%q) round-tripped to %q", argv, got)
+		t.Errorf("ShellJoin(%q) round-tripped to %q", argv, got)
 	}
 	// Empty argv must not produce a stray argument.
-	if got := shellWords(t, shellJoin(nil)); len(got) != 0 {
-		t.Errorf("shellJoin(nil) round-tripped to %q, want nothing", got)
+	if got := shellWords(t, sysopen.ShellJoin(nil)); len(got) != 0 {
+		t.Errorf("ShellJoin(nil) round-tripped to %q, want nothing", got)
 	}
 }
 
