@@ -12,14 +12,16 @@ import (
 )
 
 // Row shortcuts, so the common operations are one keystroke from the host list rather
-// than a trip through the submenu.
+// than a trip through the submenu. Actions is screen-level (not row-level) — it opens the
+// Actions menu regardless of the highlighted row.
 var keys = struct {
-	Open, Window, Power, Transfer key.Binding
+	Open, Window, Power, Transfer, Actions key.Binding
 }{
 	Open:     key.NewBinding(key.WithKeys("o")),
 	Window:   key.NewBinding(key.WithKeys("w")),
 	Power:    key.NewBinding(key.WithKeys("p")),
 	Transfer: key.NewBinding(key.WithKeys("t")),
+	Actions:  key.NewBinding(key.WithKeys("a")),
 }
 
 // NewHostsScreen builds the root: one row per host from the ssh config. It re-reads its
@@ -35,6 +37,20 @@ func NewHostsScreen(sh *core.Shared) core.Screen {
 			core.Hint("window", keys.Window),
 			core.Hint("power off", keys.Power),
 			core.Hint("transfer", keys.Transfer),
+			core.Hint("actions", keys.Actions),
+		},
+		// OnKey owns the screen-level "a" (Actions). Because the picker consults OnKey
+		// *instead of* the highlighted row's Item.Keys (they're mutually exclusive in
+		// components/picker.go), OnKey must also delegate anything it doesn't claim back to
+		// the row — otherwise the per-host o/w/p/t shortcuts (hostRow) would go dead.
+		OnKey: func(sh *core.Shared, k string, it list.Item) (core.Action, bool) {
+			if core.MatchKey(k, keys.Actions) {
+				return core.Push(actionsMenu(sh)), true
+			}
+			if row, ok := it.(components.Item); ok && row.Keys != nil {
+				return row.Keys(sh, k)
+			}
+			return core.Action{}, false
 		},
 		Refresh: func(sh *core.Shared, payload any) ([]list.Item, bool) {
 			switch payload.(type) {
