@@ -2,7 +2,7 @@
 
 `gossh` is a terminal picker for the hosts in your ssh config: open a shell,
 power a host off, or copy the paths you launched it with. Positional arguments
-are files and directories to offer for transfer, as passed by a file-manager
+are files and directories to offer for transfer, typically passed by a file-manager
 action (nemo's `%F`); with none, only the operations that need no selection are
 shown.
 
