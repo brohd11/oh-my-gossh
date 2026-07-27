@@ -11,7 +11,7 @@
 #   make && ./build/$(go env GOOS)-$(go env GOARCH)/<APP_NAME> --version
 
 APP_NAME    = gossh
-VERSION_PKG = main
+VERSION_PKG = github.com/brohd11/oh-my-gossh/cmd
 OUT_DIR     = build
 DIST_DIR    = dist
 VERSION     = $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)

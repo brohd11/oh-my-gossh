@@ -20,7 +20,7 @@ offers to put that directory on your PATH. Pin a release with
 ## Update
 
 ```sh
-gossh -update
+gossh update
 ```
 
 Checks for a newer release and, when one exists, installs it in place by
