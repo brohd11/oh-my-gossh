@@ -24,11 +24,19 @@ var version = "dev"
 func main() {
 	configPath := flag.String("config", "", "ssh config file to read (default ~/.ssh/config)")
 	showVersion := flag.Bool("version", false, "print the version and exit")
+	doUpdate := flag.Bool("update", false, "update gossh to the latest release and exit")
 	flag.Usage = usage
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Println("gossh", version)
+		return
+	}
+	if *doUpdate {
+		if err := runUpdate(); err != nil {
+			fmt.Fprintln(os.Stderr, "gossh:", err)
+			os.Exit(1)
+		}
 		return
 	}
 
@@ -57,6 +65,7 @@ shown.
 
   gossh                       # open, power off
   gossh ~/notes.txt ~/photos  # the above, plus transferring those two
+  gossh -update               # update to the latest release
 
 Flags:
 `)
