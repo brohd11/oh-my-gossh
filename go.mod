@@ -3,8 +3,8 @@ module github.com/brohd11/oh-my-gossh
 go 1.26.4
 
 require (
-	github.com/brohd11/bubblestack v0.1.3
-	github.com/brohd11/goutil v0.1.0
+	github.com/brohd11/bubblestack v0.1.6
+	github.com/brohd11/goutil v0.1.1
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/spf13/cobra v1.10.2
@@ -34,6 +34,7 @@ require (
 	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
+	github.com/yuin/goldmark v1.8.5 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
