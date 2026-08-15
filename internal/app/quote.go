@@ -35,8 +35,9 @@ func quoteRemotePath(p string) string {
 	return p[:slash+1] + sysopen.ShellQuote(p[slash+1:])
 }
 
-// quoteJoin renders a path list for a confirm dialog, quoting only what needs it so the
-// common case stays readable.
+// quoteJoin renders a path list for display (confirm dialogs, headers) as the base names
+// joined with ", ". Nothing here is quoted — display only; real shell quoting happens in
+// quoteRemotePath via sysopen.ShellQuote.
 func quoteJoin(paths []string) string {
 	out := make([]string, len(paths))
 	for i, p := range paths {

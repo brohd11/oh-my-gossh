@@ -63,7 +63,7 @@ func transferConfirm(sh *core.Shared, h sshcfg.Host, dest string) core.Screen {
 		Title: "Confirm transfer",
 		Crumb: "Confirm",
 		Text:  body,
-		OnYesLamda: func(sh *core.Shared) core.Action {
+		OnYesLambda: func(sh *core.Shared) core.Action {
 			return core.Replace(transferTask(sh, h, dest))
 		},
 	})

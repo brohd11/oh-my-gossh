@@ -80,7 +80,7 @@ func powerOffConfirm(sh *core.Shared, h sshcfg.Host) core.Screen {
 		Crumb: "Power off",
 		Text: "Run `" + poweroffCommand + "` on " + h.Alias + " (" + h.Display() + ")?\n\n" +
 			"The TUI suspends so a sudo password prompt is answerable.",
-		OnYesLamda: func(sh *core.Shared) core.Action {
+		OnYesLambda: func(sh *core.Shared) core.Action {
 			return core.Seq(core.Pop(), powerOffInline(sh, h))
 		},
 	})
