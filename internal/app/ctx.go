@@ -20,6 +20,11 @@ type Ctx struct {
 	ConfigPath string
 	LoadErr    error
 
+	// Version is the running binary's version, for the self-update check and the
+	// Actions ▸ Update row. "dev" for an unstamped build, which never compares as
+	// older than a release and so is never offered an update.
+	Version string
+
 	// override is the --config path, empty when reading the default ~/.ssh/config. It
 	// is not just bookkeeping: see SSHArgs.
 	override string
@@ -37,8 +42,8 @@ type Ctx struct {
 // New builds the context and loads the ssh config, so the first screen has rows to show.
 // A config that is missing or unreadable is not fatal — LoadErr is surfaced in the header
 // and the list falls back to a placeholder row.
-func New(paths []string, configPath string) *Ctx {
-	c := &Ctx{Paths: paths, reach: map[string]Reachability{}}
+func New(paths []string, configPath, version string) *Ctx {
+	c := &Ctx{Paths: paths, Version: version, reach: map[string]Reachability{}}
 	c.Load(configPath)
 	return c
 }
@@ -113,8 +118,12 @@ func (c *Ctx) setReach(alias string, r Reachability) {
 	c.reach[alias] = r
 }
 
-// PathLabel is the one-line summary of the argv selection used by the header and the
-// transfer menu entry.
+// PathLabel is a one-line summary of the argv selection that names a lone file rather
+// than counting it ("notes.txt", not "1 item").
+//
+// Nothing calls it today. The header and the transfer screens all want the plain count
+// (plural(n, "item")) — the header would otherwise render "notes.txt: 'notes.txt'" — so
+// this is the naming variant, kept with its test for a caller that wants it.
 func (c *Ctx) PathLabel() string {
 	switch len(c.Paths) {
 	case 0:

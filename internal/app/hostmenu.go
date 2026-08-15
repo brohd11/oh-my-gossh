@@ -51,7 +51,7 @@ func hostMenuItems(sh *core.Shared, h sshcfg.Host) []list.Item {
 		items = append(items, components.Item{
 			Name: "Transfer " + plural(len(c.Paths), "item") + "…",
 			Desc: quoteJoin(c.Paths),
-			Pick: func(sh *core.Shared) core.Action { return core.Push(transferForm(sh, h)) },
+			Pick: func(sh *core.Shared) core.Action { return transferAction(sh, h) },
 		})
 	}
 
@@ -59,7 +59,7 @@ func hostMenuItems(sh *core.Shared, h sshcfg.Host) []list.Item {
 		components.Item{
 			Name: "Power off",
 			Desc: "run `" + poweroffCommand + "` over an ssh tty",
-			Pick: func(sh *core.Shared) core.Action { return core.Push(powerOffConfirm(sh, h)) },
+			Pick: func(sh *core.Shared) core.Action { return powerOffAction(sh, h) },
 		},
 		components.Item{
 			Name: "Reachability",
@@ -70,6 +70,26 @@ func hostMenuItems(sh *core.Shared, h sshcfg.Host) []list.Item {
 		},
 	)
 	return items
+}
+
+// The per-host operations, as actions. Both ways into them — the host row's keyboard
+// shortcuts (items.go) and this menu's rows — go through these, so a shortcut and its
+// menu row cannot come to mean different things. openInline/openWindow are already
+// single calls and are used directly.
+
+// powerOffAction opens the shutdown confirm.
+func powerOffAction(sh *core.Shared, h sshcfg.Host) core.Action {
+	return core.Push(powerOffConfirm(sh, h))
+}
+
+// transferAction opens the transfer form, or says why it can't: with no argv selection
+// there is nothing to send. The menu omits its Transfer row entirely in that case and so
+// never trips the guard — it is here for the row shortcut, which is always bound.
+func transferAction(sh *core.Shared, h sshcfg.Host) core.Action {
+	if len(Of(sh).Paths) == 0 {
+		return core.SetStatus("nothing selected — launch with paths to transfer")
+	}
+	return core.Push(transferForm(sh, h))
 }
 
 // powerOffConfirm gates the shutdown. It is the one irreversible operation here, so it

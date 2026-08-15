@@ -55,7 +55,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	for _, s := range skipped {
 		fmt.Fprintln(os.Stderr, "skipping:", s)
 	}
-	return app.Run(paths, configPath)
+	return app.Run(paths, configPath, version)
 }
 
 // resolvePaths turns the raw arguments into absolute paths, dropping any that cannot be

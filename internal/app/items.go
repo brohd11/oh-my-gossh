@@ -7,6 +7,7 @@ import (
 
 	"github.com/brohd11/bubblestack/components"
 	"github.com/brohd11/bubblestack/core"
+	"github.com/brohd11/goutil/strutil"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 )
@@ -98,12 +99,9 @@ func hostRow(sh *core.Shared, h sshcfg.Host) components.Item {
 			case core.MatchKey(k, keys.Window):
 				return openWindow(sh, h), true
 			case core.MatchKey(k, keys.Power):
-				return core.Push(powerOffConfirm(sh, h)), true
+				return powerOffAction(sh, h), true
 			case core.MatchKey(k, keys.Transfer):
-				if len(Of(sh).Paths) == 0 {
-					return core.SetStatus("nothing selected — launch with paths to transfer"), true
-				}
-				return core.Push(transferForm(sh, h)), true
+				return transferAction(sh, h), true
 			}
 			return core.Action{}, false
 		},
@@ -121,10 +119,8 @@ func hostDesc(h sshcfg.Host) string {
 }
 
 // plural renders "1 host" / "3 hosts" — used in headers, confirms, and task labels.
+// It formats the whole count, which is why it stays gossh's own: the shared
+// strutil.Plural only picks the noun form, and does the "s" branch inside here.
 func plural(n int, noun string) string {
-	s := strconv.Itoa(n) + " " + noun
-	if n != 1 {
-		s += "s"
-	}
-	return s
+	return strconv.Itoa(n) + " " + strutil.Plural(n, noun, noun+"s")
 }

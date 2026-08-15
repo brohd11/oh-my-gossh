@@ -11,6 +11,8 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+
+	"github.com/brohd11/goutil/strutil"
 )
 
 // DefaultPort is what ssh uses when a Host block declares no Port.
@@ -313,20 +315,14 @@ func isPattern(alias string) bool {
 	return strings.ContainsAny(alias, "*?") || strings.HasPrefix(alias, "!")
 }
 
-// expandHome resolves a leading ~ in a path, leaving anything else untouched.
+// expandHome resolves a leading ~ in a path, leaving anything else untouched. The tilde
+// mechanics are the shared strutil.ExpandHome's; what is gossh's here is that a refusal
+// keeps the path as written rather than failing the parse — a "~otheruser/…" form is not
+// ours to resolve, and a home-lookup failure shouldn't drop an IdentityFile from a
+// config that is otherwise fine.
 func expandHome(path string) string {
-	if path == "" || path[0] != '~' {
-		return path
+	if p, err := strutil.ExpandHome(path); err == nil {
+		return p
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return path
-	}
-	if path == "~" {
-		return home
-	}
-	if strings.HasPrefix(path, "~/") {
-		return filepath.Join(home, path[2:])
-	}
-	return path // ~otheruser/… — not ours to resolve
+	return path
 }

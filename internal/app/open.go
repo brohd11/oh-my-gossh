@@ -19,12 +19,23 @@ import (
 // which silently discarded IdentityFile, Port, and ProxyJump from the very config block
 // the address came from; naming the alias lets ssh resolve its own options.
 func openInline(sh *core.Shared, h sshcfg.Host) core.Action {
-	cmd := exec.Command("ssh", Of(sh).SSHArgs(h.Target())...)
-	return core.Async(tea.ExecProcess(cmd, func(err error) tea.Msg {
+	return runInlineSSH(sh, []string{h.Target()}, func(err error) core.Action {
 		if err != nil {
-			return core.SetStatusAndLog("ssh " + h.Alias + ": " + err.Error()).Msg
+			return core.SetStatusAndLog("ssh " + h.Alias + ": " + err.Error())
 		}
-		return core.SetStatus("session to " + h.Alias + " closed").Msg
+		return core.SetStatus("session to " + h.Alias + " closed")
+	})
+}
+
+// runInlineSSH suspends the TUI and hands the terminal to an ssh invocation, restoring the
+// UI when it exits. args are the ssh arguments after the ones SSHArgs prefixes (notably -F
+// for a --config launch), and report turns the outcome into the line the user sees — which
+// is the only thing the two callers differ on: a closed shell session is unremarkable,
+// while a poweroff that drops the connection is a success that looks like a failure.
+func runInlineSSH(sh *core.Shared, args []string, report func(error) core.Action) core.Action {
+	cmd := exec.Command("ssh", Of(sh).SSHArgs(args...)...)
+	return core.Async(tea.ExecProcess(cmd, func(err error) tea.Msg {
+		return report(err).Msg
 	}))
 }
 
@@ -70,16 +81,15 @@ func windowArgv(argv []string) []string {
 // streaming background task has no terminal to answer with — it would sit there looking
 // busy until the user aborted it. Suspending the TUI hands sudo a real one.
 func powerOffInline(sh *core.Shared, h sshcfg.Host) core.Action {
-	cmd := exec.Command("ssh", Of(sh).SSHArgs("-t", h.Target(), poweroffCommand)...)
-	return core.Async(tea.ExecProcess(cmd, func(err error) tea.Msg {
+	return runInlineSSH(sh, []string{"-t", h.Target(), poweroffCommand}, func(err error) core.Action {
 		if err != nil {
 			// A host that powers off mid-command drops the connection, so ssh exits
 			// non-zero on success as often as on failure. Report it without calling it
 			// an error.
-			return core.SetStatusAndLog("poweroff " + h.Alias + ": " + err.Error() + " (expected if the host went down)").Msg
+			return core.SetStatusAndLog("poweroff " + h.Alias + ": " + err.Error() + " (expected if the host went down)")
 		}
-		return core.SetStatusAndLog("poweroff sent to " + h.Alias).Msg
-	}))
+		return core.SetStatusAndLog("poweroff sent to " + h.Alias)
+	})
 }
 
 // poweroffCommand is the generic shutdown. The Python hardcoded a different path per NAS
