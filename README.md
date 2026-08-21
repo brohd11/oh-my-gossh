@@ -8,32 +8,24 @@ shown.
 
 ## Install
 
+Unix:
 ```sh
 curl -fsSL https://raw.githubusercontent.com/brohd11/oh-my-gossh/main/install.sh | sh
 ```
 
-Installs the latest release to `~/.local/bin` (override with `BIN_DIR`) and
-offers to put that directory on your PATH. Pin a release with
-`VERSION=vX.Y.Z`, or skip the PATH prompt with `--no-modify-path` /
-`--modify-path`.
+Windows:
 
-## Update
+```powershell
+irm https://raw.githubusercontent.com/brohd11/oh-my-gossh/main/install.ps1 | iex
+```
 
-```sh
+To update:
+```
 gossh update
 ```
 
-Checks for a newer release and, when one exists, installs it in place by
-running the same `install.sh` against the directory the running binary lives
-in.
+More install details (location, flags, etc): [shared install reference](https://github.com/brohd11/goutil/blob/main/docs/install.md).
 
-## Development
-
-```sh
-make                # build into build/<os>-<arch>/
-./install_unix.sh   # symlink the dev build into ~/.local/bin
-go test ./...
-```
-
-Releases are built and published by the GitHub Actions workflow when a `v*`
-tag is pushed.
+<sub>macOS note: a binary downloaded **in a browser** gets quarantined by Gatekeeper — clear it
+with `xattr -dr com.apple.quarantine path/to/binary`. This doesn't apply to the installer
+above; the attribute is set by browsers, not by `curl`.</sub>
