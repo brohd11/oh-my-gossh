@@ -1,7 +1,9 @@
 package app
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -148,6 +150,84 @@ func TestPlural(t *testing.T) {
 	}{{0, "0 items"}, {1, "1 item"}, {2, "2 items"}} {
 		if got := plural(tc.n, "item"); got != tc.want {
 			t.Errorf("plural(%d) = %q, want %q", tc.n, got, tc.want)
+		}
+	}
+}
+
+// mkdirAndPwd is what turns the typed destination into the absolute path scp's SFTP target
+// has to be, so the test that matters is what a real shell makes of it: the directory has
+// to exist afterwards and the printed path has to be the one that was asked for — including
+// for names a shell would otherwise split, expand, or execute.
+func TestMkdirAndPwdCreatesAndReportsPath(t *testing.T) {
+	for _, dest := range []string{
+		"sub",
+		"sub with space",
+		"nested/deeper",
+		`dir'; echo pwned; echo '`,
+		`dir"double`,
+		"$HOME",
+		"*glob?",
+	} {
+		t.Run(dest, func(t *testing.T) {
+			tmp := t.TempDir()
+			line := mkdirAndPwd(dest)
+
+			cmd := exec.Command("/bin/sh", "-c", line)
+			cmd.Dir = tmp
+			// A relative cd resolves against $PWD, which exec.Command leaves pointing at
+			// the test process's own directory however Dir is set.
+			cmd.Env = append(os.Environ(), "PWD="+tmp, "CDPATH=")
+			out, err := cmd.Output()
+			if err != nil {
+				t.Fatalf("sh with %s: %v", line, err)
+			}
+
+			want := filepath.Join(tmp, dest)
+			if got := strings.TrimSpace(string(out)); got != want {
+				t.Errorf("mkdirAndPwd(%q) printed %q, want %q", dest, got, want)
+			}
+			if info, err := os.Stat(want); err != nil || !info.IsDir() {
+				t.Errorf("mkdirAndPwd(%q) did not create %s (%v)", dest, want, err)
+			}
+		})
+	}
+}
+
+// A destination pasted from a terminal arrives quoted for a shell that never sees it, so
+// those quotes would end up in the remote directory's name.
+func TestUnquoteInput(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{`"~/Desktop"`, "~/Desktop"},
+		{`'~/Desktop'`, "~/Desktop"},
+		{"~/Desktop", "~/Desktop"},
+		{`"unbalanced`, `"unbalanced`},
+		{`unbalanced"`, `unbalanced"`},
+		{`"`, `"`}, // one character is not a pair
+		{`""`, ""},
+		{`''`, ""},
+		{"", ""},
+		// Only the outer pair is stripped: anything further in is the name's own business.
+		{`"a" and "b"`, `a" and "b`},
+	} {
+		if got := unquoteInput(tc.in); got != tc.want {
+			t.Errorf("unquoteInput(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// lastLine is what keeps a chatty remote login from being mistaken for the destination:
+// resolveDest reads the path off stdout, and an rc file can print there first.
+func TestLastLine(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{"/home/b/Desktop\n", "/home/b/Desktop"},
+		{"welcome to the nas\n/home/b/Desktop\n", "/home/b/Desktop"},
+		{"/home/b/Desktop\n\n\n", "/home/b/Desktop"},
+		{"  /home/b/Desktop  \n", "/home/b/Desktop"},
+		{"\n \n", ""},
+		{"", ""},
+	} {
+		if got := lastLine(tc.in); got != tc.want {
+			t.Errorf("lastLine(%q) = %q, want %q", tc.in, got, tc.want)
 		}
 	}
 }

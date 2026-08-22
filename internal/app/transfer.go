@@ -2,6 +2,7 @@ package app
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -42,7 +43,9 @@ func transferForm(sh *core.Shared, h sshcfg.Host) core.Screen {
 			core.Hint("cancel", core.Keys.Back),
 		},
 		OnSubmit: func(sh *core.Shared, f *components.FormScreen) core.Action {
-			target := strings.TrimSpace(f.Value("dest"))
+			// unquoteInput because a path pasted from a terminal arrives quoted for a
+			// shell that is not involved here; see quote.go.
+			target := unquoteInput(strings.TrimSpace(f.Value("dest")))
 			if target == "" {
 				target = defaultDest
 			}
@@ -108,14 +111,17 @@ func runTransfer(ctx context.Context, h sshcfg.Host, dest string, paths, base []
 	args := func(extra ...string) []string { return append(append([]string(nil), base...), extra...) }
 
 	report("creating %s on %s", dest, h.Alias)
-	if err := runStreaming(ctx, report, "ssh", args(h.Target(), "mkdir -p "+quoteRemotePath(dest))...); err != nil {
+	abs, err := resolveDest(ctx, report, args(h.Target(), mkdirAndPwd(dest)))
+	if err != nil {
 		report("could not create destination: %v", err)
 		return core.TaskEvent{Done: true}
 	}
+	report("destination is %s", abs)
 
-	// scp splits this at the colon and hands the path to the remote shell, so the same
-	// tilde-preserving quoting applies as for the mkdir above.
-	remote := h.Target() + ":" + quoteRemotePath(dest)
+	// scp splits this at the colon and sends the remainder over SFTP as a literal path, so
+	// the target goes in unquoted — quoting it is what used to write files named 'Desktop'.
+	// resolveDest already expanded the tilde, which that protocol would not have either.
+	remote := h.Target() + ":" + abs
 	var failed int
 	for _, p := range paths {
 		if ctx.Err() != nil {
@@ -153,6 +159,47 @@ func runTransfer(ctx context.Context, h sshcfg.Host, dest string, paths, base []
 		report("transferred %s to %s", plural(len(paths), "item"), remote)
 	}
 	return core.TaskEvent{Done: true}
+}
+
+// resolveDest creates the destination directory on the remote and reports back its
+// absolute path, which is the form scp's SFTP target has to take (see quote.go). Asking the
+// shell that already runs the mkdir to print where it landed costs nothing extra and leaves
+// scp with a path that needs neither quoting nor tilde expansion.
+func resolveDest(ctx context.Context, report func(string, ...any), args []string) (string, error) {
+	cmd := exec.CommandContext(ctx, "ssh", args...)
+
+	// Unlike runStreaming the two streams stay apart: only stdout carries the path, and
+	// mistaking a login banner for it would send the whole transfer somewhere else. The
+	// banner is still worth showing, so it goes to the log either way.
+	var errBuf bytes.Buffer
+	cmd.Stderr = &errBuf
+	out, err := cmd.Output()
+	for _, line := range strings.Split(errBuf.String(), "\n") {
+		if line = strings.TrimRight(line, "\r"); strings.TrimSpace(line) != "" {
+			report("%s", line)
+		}
+	}
+	if err != nil {
+		return "", err
+	}
+
+	dest := lastLine(string(out))
+	if dest == "" {
+		return "", fmt.Errorf("remote reported no path")
+	}
+	return dest, nil
+}
+
+// lastLine is the final non-blank line of s, trimmed. It is the last line rather than the
+// first because a remote shell's rc files can print on stdout before pwd does.
+func lastLine(s string) string {
+	lines := strings.Split(s, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		if line := strings.TrimSpace(lines[i]); line != "" {
+			return line
+		}
+	}
+	return ""
 }
 
 // runStreaming runs a command, piping both output streams into the task log line by line,
