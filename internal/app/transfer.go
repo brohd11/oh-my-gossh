@@ -1,7 +1,6 @@
 package app
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/brohd11/bubblestack/components"
 	"github.com/brohd11/bubblestack/core"
+	"github.com/brohd11/goutil/stream"
 	"github.com/charmbracelet/bubbles/key"
 )
 
@@ -144,7 +144,7 @@ func runTransfer(ctx context.Context, h sshcfg.Host, dest string, paths, base []
 		scpArgs = append(scpArgs, p, remote)
 
 		report("copying %s", p)
-		if err := runStreaming(ctx, report, "scp", scpArgs...); err != nil {
+		if err := stream.Cmd(ctx, "", nil, report, append([]string{"scp"}, scpArgs...)...); err != nil {
 			report("failed: %s (%v)", p, err)
 			failed++
 		}
@@ -200,28 +200,4 @@ func lastLine(s string) string {
 		}
 	}
 	return ""
-}
-
-// runStreaming runs a command, piping both output streams into the task log line by line,
-// and honors ctx so esc genuinely kills an in-flight copy rather than just detaching the
-// UI from it.
-func runStreaming(ctx context.Context, report func(string, ...any), name string, args ...string) error {
-	cmd := exec.CommandContext(ctx, name, args...)
-
-	pipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	cmd.Stderr = cmd.Stdout // scp reports progress and errors on stderr; one stream is enough
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	sc := bufio.NewScanner(pipe)
-	for sc.Scan() {
-		if line := strings.TrimRight(sc.Text(), "\r"); strings.TrimSpace(line) != "" {
-			report("%s", line)
-		}
-	}
-	return cmd.Wait()
 }
