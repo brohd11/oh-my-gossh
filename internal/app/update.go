@@ -5,7 +5,7 @@ import (
 	"github.com/brohd11/bubblestack/core"
 	bsupdate "github.com/brohd11/bubblestack/selfupdate"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // selfUpdateRepo is gossh's own GitHub repo slug, passed to the shared self-update bridge.

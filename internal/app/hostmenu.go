@@ -3,9 +3,9 @@ package app
 import (
 	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
+	"charm.land/bubbles/v2/list"
 	"github.com/brohd11/bubblestack/components"
 	"github.com/brohd11/bubblestack/core"
-	"github.com/charmbracelet/bubbles/list"
 )
 
 // hostMenu is the per-host operation hub, reached by picking a host. It is a PopStop

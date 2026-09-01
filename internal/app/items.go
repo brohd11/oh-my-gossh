@@ -5,11 +5,11 @@ import (
 
 	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
 	"github.com/brohd11/bubblestack/components"
 	"github.com/brohd11/bubblestack/core"
 	"github.com/brohd11/goutil/strutil"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
 )
 
 // Row shortcuts, so the common operations are one keystroke from the host list rather

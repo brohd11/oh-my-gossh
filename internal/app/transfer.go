@@ -10,10 +10,10 @@ import (
 
 	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
+	"charm.land/bubbles/v2/key"
 	"github.com/brohd11/bubblestack/components"
 	"github.com/brohd11/bubblestack/core"
 	"github.com/brohd11/goutil/stream"
-	"github.com/charmbracelet/bubbles/key"
 )
 
 // defaultDest is where a blank destination lands, matching ssh_transfer_files.py:32.

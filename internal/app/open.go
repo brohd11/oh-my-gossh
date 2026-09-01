@@ -7,9 +7,9 @@ import (
 
 	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/brohd11/bubblestack/core"
 	"github.com/brohd11/bubblestack/sysopen"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // openInline attaches an interactive ssh session to this terminal: bubbletea suspends,

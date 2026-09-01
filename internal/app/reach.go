@@ -7,8 +7,8 @@ import (
 
 	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/brohd11/bubblestack/core"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // Reachability is a host's last probe result.

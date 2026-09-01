@@ -5,7 +5,7 @@ import (
 	"github.com/brohd11/bubblestack/components"
 	"github.com/brohd11/bubblestack/core"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // Run launches the go-ssh TUI: a single host-list tab (so bubblestack draws no tab strip),
