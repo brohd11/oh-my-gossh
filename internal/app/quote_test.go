@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -40,6 +41,9 @@ func TestQuoteRemotePathPreservesTilde(t *testing.T) {
 // it, so this round-trips through /bin/sh — the same interpreter on the far side of an
 // ssh command. Each input must come back as exactly one argument, unchanged.
 func TestShellQuoteRoundTripsThroughRealShell(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("remote POSIX shell behavior")
+	}
 	for _, in := range []string{
 		"plain",
 		"with space",
@@ -63,6 +67,9 @@ func TestShellQuoteRoundTripsThroughRealShell(t *testing.T) {
 // quoteRemotePath's contract is the same round trip, except a leading tilde is meant to
 // expand — that is the whole reason it isn't plain sysopen.ShellQuote.
 func TestQuoteRemotePathRoundTripsAndExpandsTilde(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("remote POSIX shell behavior")
+	}
 	home := shellEcho(t, "~")
 	if home == "" || home == "~" {
 		t.Skip("shell does not expand ~")
@@ -105,6 +112,9 @@ func shellEcho(t *testing.T, quoted string) string {
 // this asks a real one. The --config path with a space in it is the case that matters:
 // the detached window loses its -F argument if that splits in two.
 func TestShellJoinRoundTripsThroughRealShell(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("remote POSIX shell behavior")
+	}
 	argv := []string{"ssh", "-F", "/tmp/my configs/ssh.conf", "nas"}
 
 	got := shellWords(t, sysopen.ShellJoin(argv))
@@ -159,6 +169,9 @@ func TestPlural(t *testing.T) {
 // to exist afterwards and the printed path has to be the one that was asked for — including
 // for names a shell would otherwise split, expand, or execute.
 func TestMkdirAndPwdCreatesAndReportsPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("remote POSIX shell behavior")
+	}
 	for _, dest := range []string{
 		"sub",
 		"sub with space",
