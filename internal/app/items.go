@@ -22,7 +22,7 @@ var keys = struct {
 	Window:   key.NewBinding(key.WithKeys("w")),
 	Power:    key.NewBinding(key.WithKeys("p")),
 	Transfer: key.NewBinding(key.WithKeys("t")),
-	Actions:  key.NewBinding(key.WithKeys("a")),
+	Actions:  core.Keys.Actions,
 }
 
 // NewHostsScreen builds the root: one row per host from the ssh config. It re-reads its
