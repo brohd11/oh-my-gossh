@@ -29,7 +29,7 @@ var keys = struct {
 // rows on the reachability and config broadcasts, so a completed sweep or a Refresh
 // repaints the markers without the user navigating.
 func NewHostsScreen(sh *core.Shared) core.Screen {
-	return components.NewPicker(hostItems(sh), components.PickerOpts{
+	return components.NewRootList(hostItems(sh), components.RootListOpts{PickerOpts: components.PickerOpts{
 		Title:   "SSH hosts",
 		Crumb:   "Hosts",
 		PopStop: true,
@@ -40,16 +40,10 @@ func NewHostsScreen(sh *core.Shared) core.Screen {
 			core.Hint("transfer", keys.Transfer),
 			core.Hint("actions", keys.Actions),
 		},
-		// OnKey owns the screen-level "a" (Actions). Because the picker consults OnKey
-		// *instead of* the highlighted row's Item.Keys (they're mutually exclusive in
-		// components/picker.go), OnKey must also delegate anything it doesn't claim back to
-		// the row — otherwise the per-host o/w/p/t shortcuts (hostRow) would go dead.
-		OnKey: func(sh *core.Shared, k string, it list.Item) (core.Action, bool) {
+		// Unhandled app commands fall through to the highlighted host's shortcuts.
+		OnKey: func(sh *core.Shared, k string, _ list.Item) (core.Action, bool) {
 			if core.MatchKey(k, keys.Actions) {
 				return core.Push(actionsMenu(sh)), true
-			}
-			if row, ok := it.(components.Item); ok && row.Keys != nil {
-				return row.Keys(sh, k)
 			}
 			return core.Action{}, false
 		},
@@ -60,7 +54,7 @@ func NewHostsScreen(sh *core.Shared) core.Screen {
 			}
 			return nil, false
 		},
-	})
+	}})
 }
 
 // hostItems builds the list contents, or a single inert placeholder explaining why the

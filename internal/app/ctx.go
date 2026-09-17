@@ -16,6 +16,9 @@ import (
 // Paths is the switch the whole UI turns on: an empty selection is a first-class mode
 // where the transfer operations simply aren't offered.
 type Ctx struct {
+	// ListCompact is the session density shared by standard roots and pickers.
+	ListCompact bool
+
 	Hosts      []sshcfg.Host
 	ConfigPath string
 	LoadErr    error
@@ -141,3 +144,6 @@ func (c *Ctx) PathLabel() string {
 func (c *Ctx) Receive(sh *core.Shared, payload any) core.Action {
 	return core.OnThemeChange(payload)
 }
+
+// ListDensity opts standard lists into the app-wide session preference.
+func (c *Ctx) ListDensity() *bool { return &c.ListCompact }
