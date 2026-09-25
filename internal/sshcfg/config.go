@@ -1,7 +1,5 @@
-// Package sshcfg reads OpenSSH client config files and reports the concrete Host
-// entries a user can actually connect to. It is deliberately not a full ssh_config
-// implementation: it recognizes only the keys the TUI displays, and it skips the
-// pattern/Match machinery that exists to supply defaults rather than name a target.
+// Package sshcfg reads OpenSSH client config and lists the concrete Host entries. Only the
+// displayed keys are parsed; patterns and Match blocks are skipped.
 package sshcfg
 
 import (
@@ -22,10 +20,8 @@ const DefaultPort = "22"
 // (a file including its own directory glob) would otherwise never terminate.
 const maxIncludeDepth = 5
 
-// Host is one concrete, connectable entry from the config: the alias as written on the
-// Host line plus the subset of its options the UI shows. Alias is the load-bearing
-// field — it is what ssh and scp receive, so every other option in the block (including
-// ones this parser ignores) still applies. The rest is display material.
+// Host is one connectable entry. Alias is what ssh/scp receive, so every option in the
+// block still applies; the other fields are for display.
 type Host struct {
 	Alias        string
 	HostName     string
@@ -35,9 +31,7 @@ type Host struct {
 	ProxyJump    string
 }
 
-// Target is the argument handed to ssh/scp. Passing the alias rather than a
-// reconstructed user@hostname is what keeps IdentityFile, Port, ProxyJump, and every
-// option this parser doesn't read in play — ssh resolves the block itself.
+// Target is the alias, so ssh resolves the block's options itself.
 func (h Host) Target() string { return h.Alias }
 
 // Display is the human-readable address for a list row: user@hostname, with the port
@@ -62,9 +56,8 @@ func DefaultPath() string {
 	return filepath.Join(home, ".ssh", "config")
 }
 
-// Load reads the default config and returns its hosts along with the path consulted, so
-// a caller can show where the list came from. A missing file is not an error: it yields
-// no hosts, which the UI renders as an empty-list placeholder rather than a failure.
+// Load reads the default config and returns its hosts and path. A missing file yields no
+// hosts, not an error.
 func Load() ([]Host, string, error) {
 	path := DefaultPath()
 	if path == "" {
@@ -92,9 +85,7 @@ func loadFile(path string, depth int) ([]Host, error) {
 	return parse(f, filepath.Dir(path), depth)
 }
 
-// Parse reads a config from r. dir is the base directory relative Include paths resolve
-// against (ssh resolves them against ~/.ssh, but relative to the including file is the
-// behavior that makes a test fixture self-contained).
+// Parse reads a config from r. Relative Include paths resolve against dir.
 func Parse(r io.Reader, dir string) ([]Host, error) {
 	return parse(r, dir, 0)
 }
@@ -145,9 +136,7 @@ func parse(r io.Reader, dir string, depth int) ([]Host, error) {
 			if depth >= maxIncludeDepth {
 				continue
 			}
-			// An Include at top level contributes its own Host blocks. One appearing
-			// inside a block would rebind the block's options in ssh; that's beyond
-			// what this parser models, and the included hosts are still worth having.
+			// Include contributes its Host blocks; per-block rebinding is not modeled.
 			flush()
 			hosts = append(hosts, includedHosts(value, dir, depth)...)
 			continue
@@ -191,9 +180,7 @@ func applyKey(h *Host, key, value string) {
 	}
 }
 
-// fillDefaults applies the same fallbacks ssh does for the fields the UI needs: an
-// absent HostName means the alias is the hostname, an absent Port means 22, and an
-// absent User means the local username.
+// fillDefaults applies ssh's fallbacks: HostName = alias, Port = 22, User = local user.
 func fillDefaults(hosts []Host) {
 	local := localUser()
 	for i := range hosts {
@@ -217,10 +204,8 @@ func localUser() string {
 	return ""
 }
 
-// includedHosts expands an Include value (which may hold several whitespace-separated,
-// possibly globbed patterns) and parses each match. Unreadable or unmatched includes are
-// skipped: ssh tolerates them, and a broken include shouldn't cost the user every host
-// declared before it.
+// includedHosts expands an Include value (several, possibly globbed, patterns) and parses
+// each match. Unreadable includes are skipped, as ssh does.
 func includedHosts(value, dir string, depth int) []Host {
 	var out []Host
 	for _, pattern := range splitFields(value) {
@@ -243,9 +228,8 @@ func includedHosts(value, dir string, depth int) []Host {
 	return out
 }
 
-// splitLine strips comments and splits a config line into its keyword and value. ssh
-// accepts both "Key value" and "Key=value", with arbitrary surrounding whitespace. ok is
-// false for a blank or comment-only line.
+// splitLine strips comments and splits "Key value" or "Key=value". ok is false for blank
+// lines.
 func splitLine(line string) (key, value string, ok bool) {
 	if i := strings.IndexByte(line, '#'); i >= 0 {
 		line = line[:i]
@@ -308,18 +292,12 @@ func splitFields(s string) []string {
 	return out
 }
 
-// isPattern reports whether a Host alias is a match pattern rather than a nameable
-// target. Wildcards ("Host *", "Host *.internal") and negations ("!prod") exist to
-// attach options to a set of hosts, so neither belongs in a pick list.
+// isPattern reports whether a Host alias is a wildcard or negation, not a target.
 func isPattern(alias string) bool {
 	return strings.ContainsAny(alias, "*?") || strings.HasPrefix(alias, "!")
 }
 
-// expandHome resolves a leading ~ in a path, leaving anything else untouched. The tilde
-// mechanics are the shared strutil.ExpandHome's; what is gossh's here is that a refusal
-// keeps the path as written rather than failing the parse — a "~otheruser/…" form is not
-// ours to resolve, and a home-lookup failure shouldn't drop an IdentityFile from a
-// config that is otherwise fine.
+// expandHome resolves a leading ~. A path it cannot resolve is kept as written.
 func expandHome(path string) string {
 	if p, err := strutil.ExpandHome(path); err == nil {
 		return p

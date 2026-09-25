@@ -153,17 +153,6 @@ func TestQuoteJoinShowsBaseNames(t *testing.T) {
 	}
 }
 
-func TestPlural(t *testing.T) {
-	for _, tc := range []struct {
-		n    int
-		want string
-	}{{0, "0 items"}, {1, "1 item"}, {2, "2 items"}} {
-		if got := plural(tc.n, "item"); got != tc.want {
-			t.Errorf("plural(%d) = %q, want %q", tc.n, got, tc.want)
-		}
-	}
-}
-
 // mkdirAndPwd is what turns the typed destination into the absolute path scp's SFTP target
 // has to be, so the test that matters is what a real shell makes of it: the directory has
 // to exist afterwards and the printed path has to be the one that was asked for — including

@@ -1,20 +1,15 @@
 package app
 
 import (
-	"strconv"
-
 	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	"github.com/brohd11/bubblestack/components"
 	"github.com/brohd11/bubblestack/core"
-	"github.com/brohd11/goutil/strutil"
 )
 
-// Row shortcuts, so the common operations are one keystroke from the host list rather
-// than a trip through the submenu. Actions is screen-level (not row-level) — it opens the
-// Actions menu regardless of the highlighted row.
+// Row shortcuts for the common operations. Actions is screen-level.
 var keys = struct {
 	Open, Window, Power, Transfer, Actions key.Binding
 }{
@@ -25,9 +20,8 @@ var keys = struct {
 	Actions:  core.Keys.Actions,
 }
 
-// NewHostsScreen builds the root: one row per host from the ssh config. It re-reads its
-// rows on the reachability and config broadcasts, so a completed sweep or a Refresh
-// repaints the markers without the user navigating.
+// NewHostsScreen builds the root, one row per host, rebuilt on the reachability and config
+// broadcasts.
 func NewHostsScreen(sh *core.Shared) core.Screen {
 	return components.NewRootList(hostItems(sh), components.RootListOpts{PickerOpts: components.PickerOpts{
 		Title:   "SSH hosts",
@@ -77,9 +71,8 @@ func hostItems(sh *core.Shared) []list.Item {
 		"add a Host block to "+c.ConfigPath+" — wildcard blocks like `Host *` are not targets")
 }
 
-// hostRow builds one list row: the alias plus its reachability marker as the name, the
-// resolved address as the description, enter → the per-host operation menu, and the row's
-// own shortcuts. Transfer is bound only when there is a selection to transfer.
+// hostRow builds one row: alias plus reachability marker, the address as description, enter
+// opens the host menu. Transfer is bound only with a selection.
 func hostRow(sh *core.Shared, h sshcfg.Host) components.Item {
 	return components.Item{
 		Name:   h.Alias + Of(sh).Reach(h.Alias).Marker(),
@@ -102,19 +95,11 @@ func hostRow(sh *core.Shared, h sshcfg.Host) components.Item {
 	}
 }
 
-// hostDesc is the row's subtitle: the address ssh will resolve to, plus the identity file
-// when the block names one — that is the piece the Python's user@ip reconstruction lost.
+// hostDesc is the row's subtitle: the resolved address, plus the identity file when set.
 func hostDesc(h sshcfg.Host) string {
 	desc := h.Display()
 	if h.ProxyJump != "" {
 		desc += " via " + h.ProxyJump
 	}
 	return desc
-}
-
-// plural renders "1 host" / "3 hosts" — used in headers, confirms, and task labels.
-// It formats the whole count, which is why it stays gossh's own: the shared
-// strutil.Plural only picks the noun form, and does the "s" branch inside here.
-func plural(n int, noun string) string {
-	return strconv.Itoa(n) + " " + strutil.Plural(n, noun, noun+"s")
 }

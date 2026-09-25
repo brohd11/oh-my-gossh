@@ -12,12 +12,8 @@ import (
 	"github.com/brohd11/bubblestack/sysopen"
 )
 
-// openInline attaches an interactive ssh session to this terminal: bubbletea suspends,
-// ssh owns the tty until the user exits, then the TUI is restored.
-//
-// Only the alias is passed. The Python rebuilt user@ip (ssh.py:44) and handed ssh that,
-// which silently discarded IdentityFile, Port, and ProxyJump from the very config block
-// the address came from; naming the alias lets ssh resolve its own options.
+// openInline suspends the TUI and runs an interactive ssh session in this terminal. Only the
+// alias is passed, so ssh applies the block's IdentityFile, Port, ProxyJump etc.
 func openInline(sh *core.Shared, h sshcfg.Host) core.Action {
 	return runInlineSSH(sh, []string{h.Target()}, func(err error) core.Action {
 		if err != nil {
@@ -27,11 +23,8 @@ func openInline(sh *core.Shared, h sshcfg.Host) core.Action {
 	})
 }
 
-// runInlineSSH suspends the TUI and hands the terminal to an ssh invocation, restoring the
-// UI when it exits. args are the ssh arguments after the ones SSHArgs prefixes (notably -F
-// for a --config launch), and report turns the outcome into the line the user sees — which
-// is the only thing the two callers differ on: a closed shell session is unremarkable,
-// while a poweroff that drops the connection is a success that looks like a failure.
+// runInlineSSH suspends the TUI for ssh (args follow SSHArgs' prefix). report turns the
+// outcome into the status line.
 func runInlineSSH(sh *core.Shared, args []string, report func(error) core.Action) core.Action {
 	cmd := exec.Command("ssh", Of(sh).SSHArgs(args...)...)
 	return core.Async(tea.ExecProcess(cmd, func(err error) tea.Msg {
@@ -39,17 +32,13 @@ func runInlineSSH(sh *core.Shared, args []string, report func(error) core.Action
 	}))
 }
 
-// openWindow launches the session in a detached terminal window, the behavior the Python
-// had (ssh_open.py:51). The TUI stays up, so this is how a user keeps several sessions
-// while still driving the menu.
+// openWindow launches the session in a detached terminal window, keeping the TUI up.
 func openWindow(sh *core.Shared, h sshcfg.Host) core.Action {
 	argv := append([]string{"ssh"}, Of(sh).SSHArgs(h.Target())...)
 	return sysopen.Terminal(workDir(), windowArgv(argv)...)
 }
 
-// workDir is the directory the new window opens at. sysopen.Terminal stats it, and gossh
-// has no directory of its own — the cwd is the closest thing to one, and it is the folder
-// being browsed when a file-manager action launched us.
+// workDir is the cwd, where the new window opens; gossh has no directory of its own.
 func workDir() string {
 	if wd, err := os.Getwd(); err == nil {
 		return wd
@@ -58,14 +47,9 @@ func workDir() string {
 	return home // an empty string fails sysopen's stat, which reports it on the status line
 }
 
-// windowArgv wraps argv so the window survives its command: a detached terminal that
-// exits with ssh shows the result for a few milliseconds and then vanishes. Ported from
-// ssh_shutdown_nas.py:67, which paused for the same reason.
-//
-// The line has to stay on one line. darwin runs it through `osascript ... do script`, and
-// an AppleScript string literal cannot hold a raw newline — the multi-line form the local
-// launcher used would be a syntax error there. Windows is exempt: sysopen opens it with
-// `cmd /k`, which already keeps the window up, and there is no bash to wrap with.
+// windowArgv keeps the window open after the command exits. It must be a single line:
+// darwin passes it through an AppleScript string, which cannot hold a newline. Windows
+// already keeps the window via `cmd /k`.
 func windowArgv(argv []string) []string {
 	if runtime.GOOS == "windows" {
 		return argv
@@ -74,26 +58,16 @@ func windowArgv(argv []string) []string {
 	return []string{"bash", "-c", line}
 }
 
-// powerOffInline runs the shutdown over an ssh tty (-t), inline rather than through a
-// TaskScreen.
-//
-// The tty is the whole point: `sudo poweroff` prompts for a password on most hosts, and a
-// streaming background task has no terminal to answer with — it would sit there looking
-// busy until the user aborted it. Suspending the TUI hands sudo a real one.
+// powerOffInline runs the shutdown over ssh -t inline, so sudo has a terminal to prompt on.
 func powerOffInline(sh *core.Shared, h sshcfg.Host) core.Action {
 	return runInlineSSH(sh, []string{"-t", h.Target(), poweroffCommand}, func(err error) core.Action {
 		if err != nil {
-			// A host that powers off mid-command drops the connection, so ssh exits
-			// non-zero on success as often as on failure. Report it without calling it
-			// an error.
+			// The host drops the connection when it powers off, so a non-zero exit is expected.
 			return core.SetStatusAndLog("poweroff " + h.Alias + ": " + err.Error() + " (expected if the host went down)")
 		}
 		return core.SetStatusAndLog("poweroff sent to " + h.Alias)
 	})
 }
 
-// poweroffCommand is the generic shutdown. The Python hardcoded a different path per NAS
-// (`sudo /sbin/poweroff` for qnap, `sudo poweroff` for synology — ssh_shutdown_nas.py:60);
-// ssh config has nowhere to record that, so per-host overrides wait for the supplemental
-// config. `sudo poweroff` resolves through PATH and covers both.
+// poweroffCommand is resolved through PATH; per-host overrides need a supplemental config.
 const poweroffCommand = "sudo poweroff"

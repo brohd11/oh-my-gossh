@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/brohd11/goutil/strutil"
 	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
 	tea "charm.land/bubbletea/v2"
@@ -32,17 +33,10 @@ func (r Reachability) Marker() string {
 	return ""
 }
 
-// dialTimeout bounds a single probe. Short enough that a sweep over a handful of hosts
-// finishes while the user is still reading the list, long enough for a NAS that is slow
-// to accept on a busy network.
+// dialTimeout bounds a single probe.
 const dialTimeout = 2 * time.Second
 
-// probe reports whether a host's ssh port accepts a connection.
-//
-// This replaces the Python's `ping -c 1 -W 1` (ssh.py:53), which had two problems: -W
-// means seconds on Linux but milliseconds on macOS, so the timeout was wrong on one of
-// them; and ICMP answers a question nobody asked — a host that pings but has sshd down
-// is not reachable for anything this tool does.
+// probe reports whether a host's ssh port accepts a TCP connection (sshd up, not just ICMP).
 func probe(h sshcfg.Host) Reachability {
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(h.HostName, h.Port), dialTimeout)
 	if err != nil {
@@ -52,9 +46,8 @@ func probe(h sshcfg.Host) Reachability {
 	return Up
 }
 
-// sweepReachability probes every host concurrently and broadcasts once, so the list
-// rebuilds its rows a single time with the complete picture rather than flickering per
-// host. It is the app-level Init cmd and the Refresh key's async half.
+// sweepReachability probes every host concurrently and broadcasts once, so the list rebuilds
+// a single time.
 func sweepReachability(sh *core.Shared) tea.Cmd {
 	c := Of(sh)
 	hosts := c.Hosts
@@ -92,7 +85,7 @@ func refreshAction(sh *core.Shared, configPath string) core.Action {
 		return core.SetStatusAndLog("config: " + c.LoadErr.Error())
 	}
 	return core.Seq(
-		core.SetStatus("reloaded "+plural(len(c.Hosts), "host")+" from "+c.ConfigPath),
+		core.SetStatus("reloaded "+strutil.Count(len(c.Hosts), "host")+" from "+c.ConfigPath),
 		core.PropagateAll(HostsMsg{}),
 		core.Async(sweepReachability(sh)),
 	)

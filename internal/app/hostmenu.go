@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/brohd11/goutil/strutil"
 	"github.com/brohd11/oh-my-gossh/internal/sshcfg"
 
 	"charm.land/bubbles/v2/list"
@@ -8,13 +9,8 @@ import (
 	"github.com/brohd11/bubblestack/core"
 )
 
-// hostMenu is the per-host operation hub, reached by picking a host. It is a PopStop
-// boundary, so a sub-flow (the transfer form → confirm → task chain) returns here rather
-// than to the host list.
-//
-// The Python was op-first: script_launcher picked the operation, then each script picked
-// a target from the same dict. Host-first is what lets the menu vary by context — with no
-// argv selection the transfer entry is simply absent, which is the requested behavior.
+// hostMenu is the per-host operation hub. It is a PopStop boundary, so sub-flows return here.
+// The Transfer row is omitted without an argv selection.
 func hostMenu(sh *core.Shared, h sshcfg.Host) core.Screen {
 	return components.NewPicker(hostMenuItems(sh, h), components.PickerOpts{
 		Title:   "Host: " + h.Alias,
@@ -49,7 +45,7 @@ func hostMenuItems(sh *core.Shared, h sshcfg.Host) []list.Item {
 	// no selection the menu is just the connect/power operations.
 	if len(c.Paths) > 0 {
 		items = append(items, components.Item{
-			Name: "Transfer " + plural(len(c.Paths), "item") + "…",
+			Name: "Transfer " + strutil.Count(len(c.Paths), "item") + "…",
 			Desc: quoteJoin(c.Paths),
 			Pick: func(sh *core.Shared) core.Action { return transferAction(sh, h) },
 		})
@@ -72,19 +68,15 @@ func hostMenuItems(sh *core.Shared, h sshcfg.Host) []list.Item {
 	return items
 }
 
-// The per-host operations, as actions. Both ways into them — the host row's keyboard
-// shortcuts (items.go) and this menu's rows — go through these, so a shortcut and its
-// menu row cannot come to mean different things. openInline/openWindow are already
-// single calls and are used directly.
+// The per-host operations, shared by the row shortcuts (items.go) and this menu's rows.
 
 // powerOffAction opens the shutdown confirm.
 func powerOffAction(sh *core.Shared, h sshcfg.Host) core.Action {
 	return core.Push(powerOffConfirm(sh, h))
 }
 
-// transferAction opens the transfer form, or says why it can't: with no argv selection
-// there is nothing to send. The menu omits its Transfer row entirely in that case and so
-// never trips the guard — it is here for the row shortcut, which is always bound.
+// transferAction opens the transfer form, or explains why not. The guard is for the row
+// shortcut; the menu hides the row instead.
 func transferAction(sh *core.Shared, h sshcfg.Host) core.Action {
 	if len(Of(sh).Paths) == 0 {
 		return core.SetStatus("nothing selected — launch with paths to transfer")

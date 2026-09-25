@@ -7,22 +7,6 @@ import (
 	"testing"
 )
 
-func TestPathLabel(t *testing.T) {
-	for _, tc := range []struct {
-		paths []string
-		want  string
-	}{
-		{nil, "no selection"},
-		{[]string{"/home/b/notes.txt"}, "notes.txt"},
-		{[]string{"/a", "/b"}, "2 items"},
-	} {
-		c := &Ctx{Paths: tc.paths}
-		if got := c.PathLabel(); got != tc.want {
-			t.Errorf("PathLabel(%v) = %q, want %q", tc.paths, got, tc.want)
-		}
-	}
-}
-
 // Without --config, ssh must be left to find ~/.ssh/config itself — adding a redundant
 // -F would only be a way to get it wrong.
 func TestSSHArgsDefaultAddsNothing(t *testing.T) {
