@@ -3,8 +3,8 @@ module github.com/brohd11/oh-my-gossh
 go 1.26.4
 
 require (
-	github.com/brohd11/bubblestack v0.2.4
-	github.com/brohd11/goutil v0.2.0
+	github.com/brohd11/bubblestack v0.2.5
+	github.com/brohd11/goutil v0.2.1
 	github.com/spf13/cobra v1.10.2
 )
 
